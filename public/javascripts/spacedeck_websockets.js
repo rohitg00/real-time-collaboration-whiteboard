@@ -2,8 +2,7 @@ SpacedeckWebsockets = {
   data: {
     users_online: {},
     cursors: {},
-    clientId: null,
-    current_timeout: null
+    clientId: null
   },
   methods: {
     handle_live_updates: function(msg) {
@@ -101,15 +100,24 @@ SpacedeckWebsockets = {
       return isOnline;
     },
 
-    auth_websocket: function(space) {
-      if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) return;
-      
-      this.websocket.send(JSON.stringify({
-        action: 'auth',
-        space_id: space._id,
-        client_id: this.clientId,
-        editor_name: this.user?.nickname || this.guest_nickname || 'Anonymous'
-      }));
+    auth_websocket: function(space){
+      if (!this.websocket) {
+        this.init_websocket();
+      }
+
+      if (this.websocket && this.websocket.readyState==1) {
+        var token = "";
+        if (this.user) token = this.user.token;
+        var auth_params = {
+          action: "auth",
+          editor_auth: space_auth,
+          editor_name: this.guest_nickname,
+          auth_token: token,
+          space_id: space._id
+        };
+        console.log("[websocket] auth space");
+        this.websocket.send(JSON.stringify(auth_params));
+      }
     },
 
     websocket_send: function(msg) {
@@ -152,10 +160,11 @@ SpacedeckWebsockets = {
           this.current_timeout = null;
         }
 
-        if (this.active_space) {
+        if (this.active_space_loaded) {
           this.auth_websocket(this.active_space);
         }
         this.online = true;
+
       }.bind(this);
 
       this.websocket.onclose = function(evt) {
@@ -221,9 +230,7 @@ SpacedeckWebsockets = {
 
       // Send cursor position periodically
       document.addEventListener('mousemove', _.throttle(function(e) {
-        if (this.websocket && 
-            this.websocket.readyState === WebSocket.OPEN && 
-            this.active_space) {
+        if (this.websocket && this.websocket.readyState === WebSocket.OPEN && this.active_space) {
           this.websocket.send(JSON.stringify({
             action: 'cursor',
             space_id: this.active_space._id,
@@ -233,11 +240,44 @@ SpacedeckWebsockets = {
             nickname: this.user?.nickname || this.guest_nickname || 'Anonymous'
           }));
         }
-      }.bind(this), 33)); // Throttle to 50ms to prevent too many updates
+      }.bind(this), 16));
+
+      // Add cursor styles dynamically
+      const style = document.createElement('style');
+      style.textContent = `
+        .remote-cursor {
+          position: fixed;
+          pointer-events: none;
+          z-index: 99999;
+          transform: translate3d(0,0,0);
+          transition: transform 0.08s cubic-bezier(0.23, 1, 0.32, 1);
+          will-change: transform;
+        }
+        .cursor-pointer {
+          width: 12px;
+          height: 12px;
+          background: #FF6B6B;
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 0 4px rgba(0,0,0,0.5);
+        }
+        .cursor-label {
+          position: absolute;
+          left: 15px;
+          top: -18px;
+          padding: 3px 8px;
+          color: white;
+          font-size: 12px;
+          white-space: nowrap;
+          border-radius: 4px;
+          background: inherit;
+        }
+      `;
+      document.head.appendChild(style);
     },
 
     updateCursor: function(clientId, cursor) {
-      if (clientId === this.clientId) return; // Don't show own cursor
+      if (clientId === this.clientId) return;
 
       let cursorEl = this.cursors[clientId];
       if (!cursorEl) {
@@ -253,7 +293,7 @@ SpacedeckWebsockets = {
         this.cursors[clientId] = cursorEl;
       }
 
-      cursorEl.style.transform = `translate(${cursor.x}px, ${cursor.y}px)`;
+      cursorEl.style.transform = `translate3d(${cursor.x}px, ${cursor.y}px, 0)`;
     },
 
     addUser: function(clientId, user) {

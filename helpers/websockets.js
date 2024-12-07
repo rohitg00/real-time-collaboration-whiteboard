@@ -140,15 +140,17 @@ WebsocketHelper.prototype.handleCursorMove = function(clientId, data) {
   const client = this.clients[clientId];
   if (!client || !client.activeSpace) return;
 
-  this.broadcastToSpace(data.space_id, {
+  this.userCursors.set(clientId, {
+    x: data.x,
+    y: data.y,
+    nickname: client.userInfo?.nickname || 'Anonymous',
+    color: client.userInfo?.color
+  });
+
+  this.broadcastToSpace(client.activeSpace, {
     type: 'cursor_move',
     clientId: clientId,
-    cursor: {
-      x: data.x,
-      y: data.y,
-      nickname: client.userInfo?.nickname || data.nickname || 'Anonymous',
-      color: client.userInfo?.color || this.getRandomColor()
-    }
+    cursor: this.userCursors.get(clientId)
   });
 };
 
@@ -206,10 +208,15 @@ WebsocketHelper.prototype.handleAuth = function(data) {
       nickname: data.editor_name || 'Anonymous',
       color: this.getRandomColor()
     };
+
+    // Broadcast user joined with their color
     this.broadcastToSpace(data.space_id, {
       type: 'user_joined',
       clientId: client.clientId,
-      user: client.userInfo
+      user: {
+        nickname: client.userInfo.nickname,
+        color: client.userInfo.color
+      }
     });
   }
 };

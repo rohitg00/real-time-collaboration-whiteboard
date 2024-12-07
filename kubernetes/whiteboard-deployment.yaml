@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: whiteboard
-        image: whiteboard-app:v16
+        image: whiteboard-app:v21
         imagePullPolicy: Never
         ports:
         - containerPort: 9666
@@ -74,7 +74,7 @@ spec:
         emptyDir: {}
       initContainers:
       - name: copy-locales
-        image: whiteboard-app:v16
+        image: whiteboard-app:v21
         command: ['sh', '-c', 'cp -r /app/locales/* /app/build/locales/']
         volumeMounts:
         - name: locales
