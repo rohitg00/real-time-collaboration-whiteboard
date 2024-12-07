@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: whiteboard-network-policy
+  namespace: whiteboard-app
+spec:
+  podSelector:
+    matchLabels:
+      app: whiteboard
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: whiteboard
+    ports:
+    - protocol: TCP
+      port: 9666
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis-cluster
+    ports:
+    - protocol: TCP
+      port: 6379 

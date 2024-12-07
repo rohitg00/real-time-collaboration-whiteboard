@@ -42,9 +42,9 @@ i18n.expressBind(app, {
 app.set('view engine', 'ejs');
 
 if (isProduction) {
-  app.set('views', path.join(__dirname, 'build', 'views'));
-  app.use(favicon(path.join(__dirname, 'build', 'assets', 'images', 'favicon.png')));
-  app.use(express.static(path.join(__dirname, 'build', 'assets')));
+  app.set('views', path.join(__dirname, 'views'));
+  app.use(favicon(path.join(__dirname, 'public', 'images', 'favicon.png')));
+  app.use(express.static(path.join(__dirname, 'public')));
 } else {
   app.set('views', path.join(__dirname, 'views'));
   app.use(favicon(path.join(__dirname, 'public', 'images', 'favicon.png')));
@@ -100,12 +100,28 @@ if (config.get('storage_local_path')) {
   }));
 }
 
-// catch 404 and forward to error handler
-//app.use(require('./middlewares/404'));
+// Add this before other error handlers
+app.use((err, req, res, next) => {
+  res.status(err.status || 500);
+  res.render('error', {
+    message: err.message,
+    error: err,
+    config: config // Pass config to error template
+  });
+});
+
+// Update the existing error handling section
 if (app.get('env') == 'development') {
   app.set('view cache', false);
 } else {
-  app.use(require('./middlewares/500'));
+  app.use((err, req, res, next) => {
+    res.status(err.status || 500);
+    res.render('error', {
+      message: err.message,
+      error: {},
+      config: config // Pass config to error template
+    });
+  });
 }
 
 module.exports = app;

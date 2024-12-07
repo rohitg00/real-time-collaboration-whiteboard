@@ -10,6 +10,43 @@ function set_space_auth(hash) {
   space_auth = hash;
 }
 
+function request(method, path, data, on_success, on_error, on_progress) {
+  var req = new XMLHttpRequest();
+  req.onreadystatechange = function() {
+    if (req.readyState != 4) return;
+    
+    if (req.status >= 200 && req.status < 300) {
+      if (on_success) {
+        try {
+          var data = JSON.parse(req.responseText);
+          on_success(data);
+        } catch(e) {
+          on_success();
+        }
+      }
+    } else {
+      if (on_error) {
+        on_error(req);
+      }
+    }
+  };
+
+  if (on_progress) {
+    req.upload.addEventListener("progress", on_progress, false);
+  }
+
+  req.open(method, path, true);
+  req.setRequestHeader("Accept", "application/json");
+  
+  if (data) {
+    req.setRequestHeader("Content-Type", "application/json");
+    req.send(JSON.stringify(data));
+  } else {
+    req.send();
+  }
+  return req;
+}
+
 function load_resource(method, path, data, on_success, on_error, on_progress) {
   var req = new XMLHttpRequest();
   req.onload = function(evt,b,c) {

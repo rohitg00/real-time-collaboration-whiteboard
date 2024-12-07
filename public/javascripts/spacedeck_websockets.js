@@ -1,7 +1,9 @@
-
 SpacedeckWebsockets = {
   data: {
-    users_online: {}
+    users_online: {},
+    cursors: {},
+    clientId: null,
+    current_timeout: null
   },
   methods: {
     handle_live_updates: function(msg) {
@@ -99,24 +101,15 @@ SpacedeckWebsockets = {
       return isOnline;
     },
 
-    auth_websocket: function(space){
-      if (!this.websocket) {
-        this.init_websocket();
-      }
-
-      if (this.websocket && this.websocket.readyState==1) {
-        var token = "";
-        if (this.user) token = this.user.token;
-        var auth_params = {
-          action: "auth",
-          editor_auth: space_auth,
-          editor_name: this.guest_nickname,
-          auth_token: token,
-          space_id: space._id
-        };
-        console.log("[websocket] auth space");
-        this.websocket.send(JSON.stringify(auth_params));
-      }
+    auth_websocket: function(space) {
+      if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) return;
+      
+      this.websocket.send(JSON.stringify({
+        action: 'auth',
+        space_id: space._id,
+        client_id: this.clientId,
+        editor_name: this.user?.nickname || this.guest_nickname || 'Anonymous'
+      }));
     },
 
     websocket_send: function(msg) {
@@ -159,11 +152,10 @@ SpacedeckWebsockets = {
           this.current_timeout = null;
         }
 
-        if (this.active_space_loaded) {
+        if (this.active_space) {
           this.auth_websocket(this.active_space);
         }
         this.online = true;
-
       }.bind(this);
 
       this.websocket.onclose = function(evt) {
@@ -180,74 +172,34 @@ SpacedeckWebsockets = {
       }.bind(this);
 
       this.websocket.onmessage = function(evt) {
-        this.online = true;
-
         try {
           var msg = JSON.parse(evt.data);
+          
+          if (msg.type === 'connected') {
+            this.clientId = msg.id;
+          }
+
+          if (msg.action === "cursor") {
+            this.handle_cursor_update(msg);
+            return;
+          }
+
+          // Handle other message types
+          switch(msg.type) {
+            case 'cursor_move':
+              this.updateCursor(msg.clientId, msg.cursor);
+              break;
+            case 'user_joined':
+              this.addUser(msg.clientId, msg.user);
+              break;
+            case 'user_left':
+              this.removeUser(msg.clientId);
+              break;
+            default:
+              this.handle_live_updates(msg);
+          }
         } catch (e) {
-          console.log("[websocket] malformed message: ",evt.data);
-          return;
-        }
-
-        if (msg.channel_id == channel_id && !msg.action.match("-self")) {
-          return;
-        }
-
-        if (msg.action == "cursor") {
-          this.handle_user_cursor_update(msg);
-        }
-        else if (msg.action == "viewport") {
-          this.handle_presenter_viewport_update(msg);
-        }
-        else if (msg.action == "media") {
-          this.handle_presenter_media_update(msg);
-        }
-
-        if (msg.action == "update" || msg.action == "update-self" || msg.action == "create" || msg.action == "delete") {
-          this.handle_live_updates(msg);
-        }
-
-        if (msg.action == "init") {
-          channel_id = msg.channel_id;
-        }
-
-        if (msg.action == "auth_valid") {
-          if (this.active_space) {
-            this.subscribe(this.active_space);
-
-            if (this.unsaved_transactions()) {
-              console.log("[websockets-saver] found unsaved transactions, triggering save.");
-              this.process_artifact_save_queue();
-            }
-          }
-        }
-
-        if (msg.action == "subscription_valid") {
-          console.log("subscription_valid");
-        }
-
-        if (msg.action == "status_update") {
-          var spaceId = msg.space_id;
-          var users = msg.users;
-
-          // filter ourselves
-          if (this.user && this.user._id) {
-            users = _.filter(users, function(u) {
-              return (u && (u._id != this.user._id));
-            }.bind(this));
-          }
-
-          users = _.filter(users, function(u) {
-            return (u && (u._id || u.nickname));
-          });
-
-          this.users_online[spaceId] = users;
-
-          if (this.active_space) {
-            if (this.active_space._id == spaceId) {
-              this.active_space_users = users;
-            }
-          }
+          console.error('WebSocket message error:', e);
         }
       }.bind(this);
 
@@ -266,6 +218,66 @@ SpacedeckWebsockets = {
         }
 
       }.bind(this);
+
+      // Send cursor position periodically
+      document.addEventListener('mousemove', _.throttle(function(e) {
+        if (this.websocket && 
+            this.websocket.readyState === WebSocket.OPEN && 
+            this.active_space) {
+          this.websocket.send(JSON.stringify({
+            action: 'cursor',
+            space_id: this.active_space._id,
+            client_id: this.clientId,
+            x: e.pageX,
+            y: e.pageY,
+            nickname: this.user?.nickname || this.guest_nickname || 'Anonymous'
+          }));
+        }
+      }.bind(this), 33)); // Throttle to 50ms to prevent too many updates
+    },
+
+    updateCursor: function(clientId, cursor) {
+      if (clientId === this.clientId) return; // Don't show own cursor
+
+      let cursorEl = this.cursors[clientId];
+      if (!cursorEl) {
+        cursorEl = document.createElement('div');
+        cursorEl.className = 'remote-cursor';
+        cursorEl.innerHTML = `
+          <div class="cursor-pointer" style="background-color: ${cursor.color}"></div>
+          <div class="cursor-label" style="background-color: ${cursor.color}">
+            ${cursor.nickname}
+          </div>
+        `;
+        document.body.appendChild(cursorEl);
+        this.cursors[clientId] = cursorEl;
+      }
+
+      cursorEl.style.transform = `translate(${cursor.x}px, ${cursor.y}px)`;
+    },
+
+    addUser: function(clientId, user) {
+      this.users_online[clientId] = user;
+      // Update UI to show active users
+    },
+
+    removeUser: function(clientId) {
+      delete this.users_online[clientId];
+      if (this.cursors[clientId]) {
+        this.cursors[clientId].remove();
+        delete this.cursors[clientId];
+      }
+    },
+
+    handle_cursor_update: function(msg) {
+      if (msg.client_id === this.clientId) return;
+      
+      this.updateCursor(msg.client_id, {
+        x: msg.x,
+        y: msg.y,
+        nickname: msg.nickname,
+        color: msg.color
+      });
     }
   }
 }

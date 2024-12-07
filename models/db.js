@@ -1,5 +1,6 @@
 const Umzug = require('umzug');
-const config = require('config')
+const config = require('config');
+const pg = require('pg');
 
 function sequel_log(a,b,c) {
   console.log(a);
@@ -12,18 +13,18 @@ const sequelize = new Sequelize(
   config.get('storage_password'),
   {
     host: config.get('storage_host'),
-    dialect: config.get('storage_dialect'),
+    dialect: 'postgres',
+    dialectModule: require('pg'),
+    dialectOptions: {
+      ssl: false
+    },
     pool: {
       max: 5,
       min: 0,
       acquire: 30000,
       idle: 10000
     },
-    logging: config.has('db_logs_disabled') ? false : sequel_log,
-    // http://docs.sequelizejs.com/manual/tutorial/querying.html#operators
-    operatorsAliases: false,
-    // SQLite only
-    storage: config.get('storage_local_db')
+    logging: config.has('db_logs_disabled') ? false : sequel_log
   }
 );
 // https://github.com/sequelize/sequelize/issues/8019#issuecomment-384316346

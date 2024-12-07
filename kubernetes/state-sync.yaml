@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: state-sync
+  namespace: whiteboard-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: state-sync
+  template:
+    metadata:
+      labels:
+        app: state-sync
+    spec:
+      containers:
+      - name: state-sync
+        image: state-sync:latest
+        env:
+        - name: REDIS_HOST
+          value: redis-cluster
+        - name: RAFT_PORT
+          value: "8090"
+        - name: RAFT_PEERS
+          value: "state-sync-0,state-sync-1,state-sync-2" 

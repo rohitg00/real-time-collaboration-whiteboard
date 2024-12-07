@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whiteboard-app
+  namespace: whiteboard-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: whiteboard
+  template:
+    metadata:
+      labels:
+        app: whiteboard
+    spec:
+      containers:
+      - name: whiteboard
+        image: whiteboard-app:v16
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 9666
+        env:
+        - name: REDIS_HOST
+          value: redis
+        - name: NODE_ENV
+          value: production
+        - name: DEBUG
+          value: "*"
+        - name: POSTGRES_HOST
+          value: postgres
+        - name: POSTGRES_DB
+          value: spacedeck
+        - name: POSTGRES_USER
+          value: spacedeck
+        - name: POSTGRES_PASSWORD
+          value: secret
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "Starting whiteboard application..."
+          echo "Environment variables:"
+          env
+          echo "Testing Redis connection..."
+          nc -zv redis 6379
+          echo "Starting node..."
+          node spacedeck.js
+        readinessProbe:
+          tcpSocket:
+            port: 9666
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 9666
+          initialDelaySeconds: 40
+          periodSeconds: 15
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        volumeMounts:
+        - name: whiteboard-storage
+          mountPath: /app/storage
+        - name: locales
+          mountPath: /app/build/locales
+      volumes:
+      - name: whiteboard-storage
+        persistentVolumeClaim:
+          claimName: whiteboard-storage
+      - name: locales
+        emptyDir: {}
+      initContainers:
+      - name: copy-locales
+        image: whiteboard-app:v16
+        command: ['sh', '-c', 'cp -r /app/locales/* /app/build/locales/']
+        volumeMounts:
+        - name: locales
+          mountPath: /app/build/locales
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whiteboard-service
+  namespace: whiteboard-app
+spec:
+  type: LoadBalancer
+  selector:
+    app: whiteboard
+  ports:
+  - port: 80
+    targetPort: 9666
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: whiteboard-ingress
+  namespace: whiteboard-app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: whiteboard-service
+            port:
+              number: 80 

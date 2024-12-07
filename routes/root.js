@@ -19,7 +19,7 @@ router.get('/', (req, res) => {
 });
 
 router.get('/ping', (req, res) => {
-  res.status(200).json({"status": "ok"})
+  res.status(200).json({ status: 'ok' });
 });
 
 router.get('/spaces', (req, res) => {

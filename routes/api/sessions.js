@@ -13,7 +13,7 @@ var router = express.Router();
 router.post('/', function(req, res) {
   var data = req.body;
   if (!data.email || !data.password) {
-    res.status(400).json({});
+    res.status(400).json({error: "missing_credentials"});
     return;
   }
 
@@ -46,8 +46,13 @@ router.post('/', function(req, res) {
               res.sendStatus(500);
             })
             .then(() => {
-              var domain = (process.env.NODE_ENV == "production") ? new URL(config.get('endpoint')).hostname : req.headers.hostname;
-              res.cookie('sdsession', token, { domain: domain, httpOnly: true });
+              // Set cookie without domain restriction in development
+              const cookieOptions = {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production'
+              };
+              
+              res.cookie('sdsession', token, cookieOptions);
               res.status(201).json(session);
             });
         });

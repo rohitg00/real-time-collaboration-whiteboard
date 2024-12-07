@@ -1,0 +1,28 @@
+heat_template_version: 2018-08-31
+
+description: Whiteboard Application Stack
+
+resources:
+  whiteboard_network:
+    type: OS::Neutron::Net
+    properties:
+      name: whiteboard-network
+
+  whiteboard_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: whiteboard_network }
+      cidr: 10.0.0.0/24
+      
+  kubernetes_cluster:
+    type: OS::Heat::AutoScalingGroup
+    properties:
+      min_size: 3
+      max_size: 10
+      resource:
+        type: OS::Nova::Server
+        properties:
+          flavor: m1.large
+          image: ubuntu-20.04
+          networks:
+            - network: { get_resource: whiteboard_network }

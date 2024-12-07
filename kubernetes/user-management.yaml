@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-groups-config
+  namespace: whiteboard-app
+data:
+  groups.json: |
+    {
+      "group1": {
+        "name": "Team Alpha",
+        "whiteboard_instance": "whiteboard-0"
+      },
+      "group2": {
+        "name": "Team Beta",
+        "whiteboard_instance": "whiteboard-1"
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-management
+  namespace: whiteboard-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-management
+  template:
+    metadata:
+      labels:
+        app: user-management
+    spec:
+      containers:
+      - name: user-management
+        image: user-management:latest
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: user-groups
+          mountPath: /etc/user-groups
+      volumes:
+      - name: user-groups
+        configMap:
+          name: user-groups-config 

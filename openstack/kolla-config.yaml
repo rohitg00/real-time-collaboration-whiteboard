@@ -1,0 +1,139 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kolla-config
+  namespace: openstack
+data:
+  KOLLA_CONFIG_STRATEGY: COPY_ALWAYS
+  DB_HOST: mariadb
+  KEYSTONE_DB_PASSWORD: secret
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keystone
+  namespace: openstack
+spec:
+  selector:
+    matchLabels:
+      app: keystone
+  template:
+    metadata:
+      labels:
+        app: keystone
+    spec:
+      containers:
+      - name: keystone
+        image: kolla/ubuntu-binary-keystone:latest
+        envFrom:
+        - configMapRef:
+            name: kolla-config
+        ports:
+        - containerPort: 5000
+        - containerPort: 35357
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+  namespace: openstack
+spec:
+  serviceName: mariadb
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+      - name: mariadb
+        image: mariadb:10.5
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: secret
+        volumeMounts:
+        - name: mariadb-data
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: mariadb-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: openstack
+spec:
+  serviceName: redis
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:6.2-alpine
+        args: ["redis-server", "--requirepass", "secret"]
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keystone
+  namespace: openstack
+spec:
+  selector:
+    app: keystone
+  ports:
+  - name: public
+    port: 5000
+    targetPort: 5000
+  - name: admin
+    port: 35357
+    targetPort: 35357
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  namespace: openstack
+spec:
+  selector:
+    app: mariadb
+  ports:
+  - port: 3306
+    targetPort: 3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: openstack
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379 

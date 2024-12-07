@@ -4,17 +4,14 @@
 
     "host": "0.0.0.0",
     "port": 9666,
-    "endpoint": "http://0.0.0.0:9666",
+    "endpoint": "http://whiteboard-service",
     "invite_code": "secret",
 
-    // "storage_dialect": "sqlite",
-
-    "storage_dialect": "sqlite",
-
-    "storage_host": "localhost",
+    "storage_dialect": "pg",
+    "storage_host": "postgres-service",
     "storage_database": "spacedeck",
-    "storage_username": "username",
-    "storage_password": "password",
+    "storage_username": "spacedeck",
+    "storage_password": "secret",
 
     "storage_local_path": "./storage",
     "storage_local_db": "./database/database.sqlite",
@@ -23,16 +20,9 @@
     "storage_bucket": "iccwhiteboard",
     "storage_cdn": "/storage",
 
-    // "storage_local_path": "./storage",
-    // "storage_local_db": "./database/database.sqlite",
-    // "storage_region": "eu-central-1",
-    // "storage_endpoint": "http://localhost:4572",
-    // "storage_bucket": "my_spacedeck_bucket",
-    // "storage_cdn": "/storage",
-
     "mongodb_host": "localhost",
-    "redis_mock": true,
-    "redis_host": "localhost",
+    "redis_mock": false,
+    "redis_host": "redis-service",
 
     "export_api_secret": "very_secret_export_password",
 

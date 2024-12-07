@@ -1,0 +1,31 @@
+# Controller Node Configuration
+compute_nodes:
+  controller:
+    vcpus: 8
+    ram_mb: 16384
+    disk_gb: 100
+    networks:
+      - name: management
+        ip: 192.168.1.10
+      - name: provider
+        ip: 10.0.0.10
+
+  compute1:
+    vcpus: 8
+    ram_mb: 32768
+    disk_gb: 500
+    networks:
+      - name: management
+        ip: 192.168.1.11
+      - name: provider
+        ip: 10.0.0.11
+
+  compute2:
+    vcpus: 8
+    ram_mb: 32768
+    disk_gb: 500
+    networks:
+      - name: management
+        ip: 192.168.1.12
+      - name: provider
+        ip: 10.0.0.12 

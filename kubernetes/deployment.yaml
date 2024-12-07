@@ -1,0 +1,32 @@
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: whiteboard-app
+#   namespace: whiteboard-app
+# spec:
+#   replicas: 3
+#   selector:
+#     matchLabels:
+#       app: whiteboard
+#   template:
+#     metadata:
+#       labels:
+#         app: whiteboard
+#     spec:
+#       containers:
+#       - name: whiteboard
+#         image: whiteboard-app:latest
+#         ports:
+#         - containerPort: 9666
+#         env:
+#         - name: REDIS_HOST
+#           value: redis-service
+#         - name: POSTGRES_HOST
+#           value: postgres-service
+#         volumeMounts:
+#         - name: whiteboard-storage
+#           mountPath: /app/storage
+#       volumes:
+#       - name: whiteboard-storage
+#         persistentVolumeClaim:
+#           claimName: whiteboard-storage 

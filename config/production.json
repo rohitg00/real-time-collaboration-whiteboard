@@ -1,0 +1,35 @@
+{
+    "team_name": "My Open Spacedeck",
+    "contact_email": "ghumare64@gmail.com",
+
+    "host": "0.0.0.0",
+    "port": 9666,
+    "endpoint": "http://whiteboard-service",
+
+    "storage_dialect": "postgres",
+    "storage_host": "postgres",
+    "storage_database": "spacedeck",
+    "storage_username": "spacedeck",
+    "storage_password": "secret",
+    "storage_options": {
+        "dialect": "postgres",
+        "dialectModule": "pg",
+        "host": "postgres",
+        "port": 5432,
+        "pool": {
+            "max": 5,
+            "min": 0,
+            "acquire": 30000,
+            "idle": 10000
+        }
+    },
+
+    "storage_local_path": "./storage",
+    "storage_local_db": "./database/database.sqlite",
+
+    "redis_mock": false,
+    "redis_host": "redis",
+    "redis_password": "secret",
+
+    "export_api_secret": "very_secret_export_password"
+} 

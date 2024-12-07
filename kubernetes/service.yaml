@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: whiteboard-service
+  namespace: whiteboard-app
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 9666
+  selector:
+    app: whiteboard 
